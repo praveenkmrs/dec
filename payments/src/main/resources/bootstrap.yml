@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: payment-service
+  profiles:
+    active: cde
+  cloud:
+    config:
+      uri: http://configuration:7776/

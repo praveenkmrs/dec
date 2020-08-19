@@ -1,0 +1,139 @@
+version: '3.8'
+services:
+  discovery:
+    build: discovery/
+    image: cde/discovery
+    hostname: discovery
+    restart: always
+    networks:
+        - cde-micropay-network
+    ports:
+      - 7777:7777
+    healthcheck:
+      test: "exit 0"
+
+  configuration:
+    build: configuration/
+    image: cde/configuration
+    hostname: configuration
+    restart: always
+    networks:
+        - cde-micropay-network
+    links:
+        - discovery:discovery
+    ports:
+      - 7776:7776
+    healthcheck:
+      test: "exit 0"
+
+  customers-db:
+    image: postgres
+    container_name: customers-db
+    hostname: customers-db
+    restart: always
+    networks:
+        - cde-micropay-network
+    environment:
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_DB: customers
+    ports:
+      - 5430:5432
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+  customers:
+    build: customers/
+    image: cde/customers
+    hostname: customers
+    restart: always
+    networks:
+        - cde-micropay-network
+    links:
+        - configuration:configuration
+        - discovery:discovery
+        - customers-db:customers-db
+    ports:
+      - 8081:80
+    healthcheck:
+      test: "exit 0"
+
+  cards-db:
+    image: postgres
+    container_name: cards-db
+    hostname: cards-db
+    restart: always
+    networks:
+        - cde-micropay-network
+    environment:
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_DB: cards
+    ports:
+      - 5431:5432
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+  cards:
+    build: cards/
+    image: cde/cards
+    hostname: cards
+    restart: always
+    networks:
+        - cde-micropay-network
+    links:
+        - configuration:configuration
+        - discovery:discovery
+        - cards-db:cards-db
+        - "customers:customer-service"
+    ports:
+      - 8082:80
+    healthcheck:
+      test: "exit 0"
+
+  payments-db:
+    image: postgres
+    container_name: payments-db
+    hostname: payments-db
+    restart: always
+    networks:
+        - cde-micropay-network
+    environment:
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
+        POSTGRES_DB: payments
+    ports:
+      - 5432:5432
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+  payments:
+    build: payments/
+    image: cde/payments
+    hostname: payments
+    restart: always
+    networks:
+        - cde-micropay-network
+    links:
+        - configuration:configuration
+        - discovery:discovery
+        - payments-db:payments-db
+        - "cards:card-service"
+        - "customers:customer-service"
+    ports:
+      - 8080:80
+    healthcheck:
+      test: "exit 0"
+
+networks:
+    cde-micropay-network:
+        driver: bridge
